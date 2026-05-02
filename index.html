@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aviation Digital Vision - Borrirux Polyiam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary-green: #0a1a12;
+            --accent-gold: #d4af37;
+            --bg-tile: #152a1e;
+            --text-light: #f5f5f5;
+            --border-color: #2d4a3b;
+            --slide-width: 1280px;
+            --slide-height: 720px;
+        }
+
+        * { box-sizing: border-box; }
+        body { 
+            background-color: #000; 
+            margin: 0; padding: 0;
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; width: 100vw;
+            overflow: hidden;
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        #viewport {
+            width: var(--slide-width);
+            height: var(--slide-height);
+            position: relative;
+            transform-origin: center center;
+            flex-shrink: 0;
+        }
+
+        .slide {
+            width: 100%; height: 100%;
+            background-color: var(--primary-green);
+            color: var(--text-light);
+            position: absolute; top: 0; left: 0;
+            display: none; flex-direction: column;
+            padding: 50px 80px; border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.8);
+            overflow-y: auto; /* เผื่อเนื้อหายาวบนมือถือ จะได้เลื่อนได้ */
+        }
+        .slide.active { display: flex; }
+
+        .slide::after {
+            content: ''; position: absolute; top: -150px; right: -150px;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, transparent 70%);
+            z-index: 0;
+        }
+
+        h1, h2, h3, h4 { font-family: 'Poppins', 'Sarabun', sans-serif; margin: 0; z-index: 1; }
+        .slide-title {
+            font-size: 46px; font-weight: 700; margin-bottom: 35px;
+            border-left: 12px solid var(--accent-gold); padding-left: 25px;
+            text-transform: uppercase; color: #fff;
+        }
+
+        .content-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; z-index: 1; width: 100%; }
+
+        /* Interactive Elements */
+        .clickable {
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            border: 1px solid transparent;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .clickable:hover {
+            background: rgba(212, 175, 55, 0.1) !important;
+            border-color: var(--accent-gold);
+            transform: scale(1.02);
+        }
+        .info-badge {
+            font-size: 12px;
+            background: var(--accent-gold);
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+            font-weight: bold;
+            vertical-align: middle;
+        }
+
+        /* Modal / Detail View */
+        .modal {
+            display: none;
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 10005;
+            padding: 60px;
+            flex-direction: column;
+            animation: fadeIn 0.3s ease;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: var(--bg-tile);
+            border: 2px solid var(--accent-gold);
+            border-radius: 20px;
+            padding: 40px;
+            height: 100%;
+            display: grid;
+            grid-template-columns: 0.9fr 1.1fr;
+            gap: 40px;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute;
+            top: 20px; right: 20px;
+            color: var(--accent-gold);
+            font-size: 35px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        /* Shared Components */
+        .two-col { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 60px; align-items: center; width: 100%; }
+        .tiled-grid { display: flex; gap: 25px; width: 100%; }
+        .tile { 
+            flex: 1; background: var(--bg-tile); padding: 35px; border-radius: 20px; 
+            border-bottom: 6px solid var(--accent-gold); text-align: center;
+        }
+        .tile i { font-size: 60px; color: var(--accent-gold); margin-bottom: 25px; }
+
+        .list-style { list-style: none; padding: 0; }
+        .list-style li { position: relative; padding-left: 50px; margin-bottom: 24px; font-size: 24px; line-height: 1.4; }
+        .list-style li i { position: absolute; left: 0; top: 4px; color: var(--accent-gold); font-size: 28px; }
+
+        .img-frame { 
+            border-radius: 20px; overflow: hidden; border: 1px solid var(--accent-gold); 
+            height: 440px; width: 100%; background: #111; box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+        }
+        .img-frame img { width: 100%; height: 100%; object-fit: fill; background-color: #050d08; /* ใส่สีพื้นหลังให้กลมกลืนกับธีม เผื่อกรณีรูปไม่เต็มกรอบ */
+    padding: 10px; /* เว้นระยะขอบเล็กน้อยให้ดูเนี้ยบขึ้น */} 
+
+        .grid-100days { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+        .day-card { 
+            background: var(--bg-tile); padding: 25px; border-radius: 15px;
+            display: flex; align-items: center; gap: 20px; border-left: 6px solid var(--accent-gold);
+        }
+        .day-card i { font-size: 32px; color: var(--accent-gold); width: 55px; text-align: center; flex-shrink: 0; }
+        .day-card span { font-size: 24px; font-weight: 400; color: #fff; line-height: 1.2; }
+
+        .table-box table { width: 100%; border-collapse: collapse; background: var(--bg-tile); border-radius: 20px; overflow: hidden; }
+        .table-box th { background: #1c3628; padding: 25px; text-align: left; font-size: 24px; color: var(--accent-gold); }
+        .table-box td { padding: 20px 25px; border-bottom: 1px solid var(--primary-green); font-size: 22px; }
+
+        .ui-nav { position: fixed; bottom: 30px; right: 30px; display: flex; gap: 15px; z-index: 10000; }
+        .ui-btn { 
+            background: var(--accent-gold); color: #000; border: none; padding: 12px 24px; 
+            border-radius: 50px; cursor: pointer; font-weight: bold; font-family: sans-serif;
+            display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .ui-circle { width: 50px; height: 50px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* ========================================================
+           📱 RESPONSIVE DESIGN FOR MOBILE & TABLET 
+           ======================================================== */
+        @media screen and (max-width: 900px) {
+            .slide { 
+                padding: 30px 20px; /* ลดขอบซ้ายขวาบนมือถือ */
+                padding-bottom: 100px; /* เว้นที่ว่างให้ปุ่มเปลี่ยนสไลด์ */
+            }
+            .slide-title { 
+                font-size: 28px; margin-bottom: 20px; padding-left: 15px; border-left-width: 8px;
+            }
+            .two-col { 
+                grid-template-columns: 1fr; /* เปลี่ยนเป็นแถวเดียว */
+                gap: 30px; 
+            }
+            .modal { padding: 15px; }
+            .modal-content { 
+                display: flex; /* เปลี่ยนจาก grid เป็น flex เพื่อคุมลำดับบนมือถือ */
+                flex-direction: column; 
+                overflow-y: auto; 
+                height: 90vh; /* กำหนดความสูงให้ชัดเจนเพื่อให้เนื้อหาเลื่อนได้ */
+                padding: 20px;
+                gap: 20px;
+            }
+            .img-frame { 
+                height: 280px !important; /* บังคับความสูงขั้นต่ำบนมือถือ */
+                min-height: 280px !important;
+                width: 100%;
+                flex-shrink: 0; /* ป้องกันการโดนเบียดจนแบน */ 
+            } /* ลดขนาดรูปบนมือถือ */
+            
+            .list-style li { font-size: 18px; padding-left: 35px; }
+            .list-style li i { font-size: 20px; top: 2px; }
+            .tile { padding: 20px; }
+            .tile i { font-size: 35px; }
+            .tile h3 { font-size: 18px; margin: 10px 0; }
+            .tile p { font-size: 14px; }
+            .grid-100days { grid-template-columns: 1fr; gap: 15px; } /* 100 Days เรียง 1 แถว */
+            .day-card { padding: 15px; gap: 15px; }
+            .day-card span { font-size: 16px; }
+            .ui-nav { bottom: 15px; right: 15px; gap: 10px; }
+            .ui-btn { padding: 10px 18px; font-size: 14px; }
+            
+            /* Text size adjustments for Title Slide */
+            h1[style*="font-size: 100px;"] { font-size: 45px !important; }
+            div[style*="font-size: 30px;"] { font-size: 18px !important; line-height: 1.4; }
+            strong[style*="font-size: 40px;"] { font-size: 24px !important; }
+            /* Text size adjustments for Q&A Slide */
+            h2[style*="font-size: 130px;"] { font-size: 80px !important; margin-top: 50px;}
+            p[style*="font-size: 40px;"] { font-size: 22px !important; margin-bottom: 30px !important;}
+        }
+    </style>
+</head>
+<body>
+
+<!-- MODAL AREA -->
+<div class="modal" id="modal-detail">
+    <div class="modal-content">
+        <div class="close-modal" onclick="closeDetail()"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div class="img-frame" style="height:100%;">
+            <img src="" id="modal-img" alt="Detail Image">
+        </div>
+        <div style="padding: 20px; display: flex; flex-direction: column; justify-content: center;">
+            <h2 id="modal-title" style="color:var(--accent-gold); font-size: 42px; margin-bottom: 25px;">Title</h2>
+            <div id="modal-desc" style="font-size: 26px; line-height: 1.6; color: #fff;">
+                Description goes here...
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="progress-indicator" style="position:fixed; top:0; left:0; height:6px; background:var(--accent-gold); z-index:10001; transition:width 0.3s;"></div>
+
+<div class="ui-nav">
+    <button class="ui-btn" onclick="toggleFS()"><i class="fa-solid fa-expand"></i> FULLSCREEN</button>
+    <button class="ui-btn ui-circle" onclick="prev()"><i class="fa-solid fa-chevron-left"></i></button>
+    <button class="ui-btn ui-circle" onclick="next()"><i class="fa-solid fa-chevron-right"></i></button>
+</div>
+
+<div id="viewport">
+    
+    <!-- Slide 1: Title -->
+    <div class="slide active">
+        <div class="content-area">
+            <h1 style="font-size: 100px; line-height: 1;">DIGITAL-FIRST</h1>
+            <h1 style="font-size: 100px; line-height: 1; color: var(--accent-gold); margin-bottom: 30px;">INSTITUTION</h1>
+            <div style="height: 8px; width: 160px; background: var(--accent-gold); margin-bottom: 50px;"></div>
+            <div style="font-size: 28px;">
+                <strong style="color: var(--accent-gold); font-size: 38px;">Borrirux Polyiam</strong><br>
+                ผู้สมัครตำแหน่งผู้อำนวยการสำนักดิจิทัลการบิน
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 2: Summary -->
+    <div class="slide">
+        <h2 class="slide-title">Executive Summary</h2>
+        <div class="content-area">
+            <div style="background: linear-gradient(135deg, var(--bg-tile) 0%, #0a1a12 100%); padding: 60px; border-radius: 40px; border: 2px solid var(--accent-gold); text-align: center;">
+                <p style="font-size: 36px; line-height: 1.6; margin: 0;">
+                    "มุ่งยกระดับ สบพ. สู่องค์กรดิจิทัลสมรรถนะสูงด้วย<br>
+                    <span style="color:var(--accent-gold);">เสถียรภาพระบบ</span> | <span style="color:var(--accent-gold);">ความปลอดภัย</span> | <span style="color:var(--accent-gold);">นวัตกรรม AI</span>"
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3 -->
+    <div class="slide">
+        <h2 class="slide-title">Core Strategic Pillars</h2>
+        <div class="content-area">
+            <div class="tiled-grid">
+                <div class="tile">
+                    <i class="fa-solid fa-plane-shield"></i>
+                    <h3>Aviation Focus</h3>
+                    <p style="font-size: 18px;">มาตรฐาน ICAO & Smart Aviation Ecosystem</p>
+                </div>
+                <div class="tile">
+                    <i class="fa-solid fa-brain"></i>
+                    <h3>AI & Automation</h3>
+                    <p style="font-size: 18px;">RPA และ AI เพื่อความรวดเร็วและแม่นยำ</p>
+                </div>
+                <div class="tile">
+                    <i class="fa-solid fa-server"></i>
+                    <h3>Infrastructure</h3>
+                    <p style="font-size: 18px;">รากฐาน SD-WAN & Hybrid Cloud ที่มั่นคง</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4 -->
+    <div class="slide">
+        <h2 class="slide-title">Transformation Roadmap</h2>
+        <div class="content-area">
+            <div class="tiled-grid" style="align-items: stretch;">
+                <div class="tile" style="border-bottom: none; border-top: 6px solid var(--accent-gold);">
+                    <div style="font-size: 24px; color: var(--accent-gold); margin-bottom: 10px;">Phase 1</div>
+                    <h3>100 วันแรก</h3>
+                    <p>Health Check & Quick Wins (RPA)</p>
+                </div>
+                <div class="tile" style="border-bottom: none; border-top: 6px solid var(--accent-gold);">
+                    <div style="font-size: 24px; color: var(--accent-gold); margin-bottom: 10px;">Phase 2</div>
+                    <h3>ระยะ 1 ปี</h3>
+                    <p>Foundation & Modernization</p>
+                </div>
+                <div class="tile" style="border-bottom: none; border-top: 6px solid var(--accent-gold);">
+                    <div style="font-size: 24px; color: var(--accent-gold); margin-bottom: 10px;">Phase 3</div>
+                    <h3>ระยะยาว</h3>
+                    <p>Smart Aviation Hub Excellence</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Infrastructure (Interactive) -->
+    <div class="slide">
+        <h2 class="slide-title">Infrastructure & Governance</h2>
+        <div class="content-area">
+            <div class="two-col">
+                <ul class="list-style">
+                    <li class="clickable" onclick="openDetail('sdwan')">
+                        <i class="fa-solid fa-network-wired"></i> <strong>SD-WAN Campus</strong><span class="info-badge">INFO</span>
+                        <div style="font-size:18px; color:rgba(255,255,255,0.7);">เชื่อมกรุงเทพฯ-หัวหิน ทรัพยากรเท่าเทียม</div>
+                    </li>
+                    <li class="clickable" onclick="openDetail('noc')">
+                        <i class="fa-solid fa-shield-halved"></i> <strong>Security & NOC</strong><span class="info-badge">INFO</span>
+                        <div style="font-size:18px; color:rgba(255,255,255,0.7);">Firewall & Monitoring 24/7</div>
+                    </li>
+                    <li><i class="fa-solid fa-coins"></i> <strong>Budgeting:</strong> บริหารอย่างโปร่งใสและคุ้มค่า</li>
+                </ul>
+                <div class="img-frame">
+                    <img src="img/infra.jpeg" alt="Server Room">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: EA -->
+    <div class="slide">
+        <h2 class="slide-title">Enterprise Architecture (EA)</h2>
+        <div class="content-area">
+            <div class="two-col">
+                <div class="img-frame">
+                    <img src="img/EA.jpeg" alt="Cloud">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <div class="tile clickable" onclick="openDetail('hybridcloud')">
+                        <h3><i class="fa-solid fa-cloud-bolt"></i> Hybrid Cloud <span class="info-badge">INFO</span></h3>
+                        <p>VMware SDDC & vSAN Storage</p>
+                    </div>
+                    <div class="tile clickable" onclick="openDetail('sso')">
+                        <h3><i class="fa-solid fa-key"></i> Unified SSO <span class="info-badge">INFO</span></h3>
+                        <p>ความปลอดภัยและความสะดวกในหนึ่งเดียว</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Smart Campus -->
+    <div class="slide">
+        <h2 class="slide-title">Smart Aviation Campus</h2>
+        <div class="content-area">
+            <div class="two-col">
+                <ul class="list-style">
+                    <li class="clickable" onclick="openDetail('fod')">
+                        <i class="fa-solid fa-eye"></i> <strong>AI FOD Detection</strong><span class="info-badge">INFO</span>
+                        <p style="font-size:18px;">ตรวจจับวัตถุแปลกปลอมรันเวย์แม่นยำ 95%</p>
+                    </li>
+                    <li><i class="fa-solid fa-microchip"></i> <strong>Edge Computing:</strong> ประมวลผลรวดเร็วแบบ Real-time</li>
+                    <li><i class="fa-solid fa-user-graduate"></i> <strong>AI Analytics:</strong> วิเคราะห์ศักยภาพนักศึกษา</li>
+                </ul>
+                <div class="img-frame">
+                    <img src="img/SC.jpeg" alt="Smart Airport"> 
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 8: Innovation Showcase -->
+    <div class="slide">
+        <h2 class="slide-title">Innovation Lab Showcase</h2>
+        <div class="content-area">
+            <div class="tiled-grid">
+                <div class="tile clickable" onclick="openDetail('fod')">
+                    <i class="fa-solid fa-robot"></i>
+                    <h3>FOD Vision AI</h3>
+                    <p>รางวัล Super AI Engineer</p>
+                </div>
+                <div class="tile">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <h3>Smart Dashboard</h3>
+                    <p>ศูนย์รวมข้อมูล Real-time</p>
+                </div>
+                <div class="tile clickable" onclick="openDetail('rpa_detail')">
+                    <i class="fa-solid fa-bolt"></i>
+                    <h3>RPA Center</h3>
+                    <p>Digital Automation</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 9: ROI Table -->
+    <div class="slide">
+        <h2 class="slide-title">ROI & Operational Excellence</h2>
+        <div class="content-area">
+            <div class="table-box">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>กระบวนการหลัก</th>
+                            <th>ก่อนใช้เทคโนโลยี</th>
+                            <th>หลังใช้เทคโนโลยี</th>
+                            <th>Impact</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="clickable" onclick="openDetail('rpa_detail')">
+                            <td>งานทะเบียนนักศึกษา</td><td>5 วันทำการ</td><td>ภายใน 1 วัน</td><td style="color:var(--accent-gold);">ลดเวลา 80% (Click)</td>
+                        </tr>
+                        <tr><td>การกระทบยอดบัญชี</td><td>3 วันทำการ</td><td>Real-time</td><td style="color:var(--accent-gold);">แม่นยำ 100%</td></tr>
+                        <tr><td>รายงานงบประมาณ</td><td>8 ชั่วโมง</td><td>30 นาที</td><td style="color:var(--accent-gold);">ต้นทุนลด 30%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 10: Security -->
+    <div class="slide">
+        <h2 class="slide-title">Cybersecurity Resilience</h2>
+        <div class="content-area">
+            <div class="two-col">
+                <div class="tile clickable" style="padding: 45px;" onclick="openDetail('backup')">
+                    <p style="font-size: 24px; color: var(--accent-gold); font-weight: 700;">DATA PROTECTION</p>
+                    <div style="font-size: 140px; font-weight: 700; color: var(--accent-gold); line-height: 1;">100%</div>
+                    <p style="font-size: 22px;">IMMUTABLE BACKUP <span class="info-badge">INFO</span></p>
+                </div>
+                <ul class="list-style">
+                    <li class="clickable" onclick="openDetail('zerotrust')">
+                        <i class="fa-solid fa-user-lock"></i> <strong>Zero Trust Architecture</strong><span class="info-badge">INFO</span>
+                        <p style="font-size:18px;">ตรวจสอบทุกการเข้าถึงเสมอ</p>
+                    </li>
+                    <li><i class="fa-solid fa-clipboard-check"></i> <strong>Compliance:</strong> ICAO & PDPA</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 11: 100 Days -->
+    <div class="slide">
+        <h2 class="slide-title">The First 100 Days Plan</h2>
+        <div class="content-area">
+            <div class="grid-100days">
+                <div class="day-card"><i class="fa-solid fa-stethoscope"></i> <span>System Health Check</span></div>
+                <div class="day-card"><i class="fa-solid fa-rocket"></i> <span>Quick Win Pilot (RPA)</span></div>
+                <div class="day-card"><i class="fa-solid fa-users-gear"></i> <span>Digital Skill Audit</span></div>
+                <div class="day-card"><i class="fa-solid fa-graduation-cap"></i> <span>Digital Champion Program</span></div>
+                <div class="day-card"><i class="fa-solid fa-id-card"></i> <span>Identity Consolidation (SSO)</span></div>
+                <div class="day-card"><i class="fa-solid fa-magnifying-glass-chart"></i> <span>Infrastructure Roadmap</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 12: Q&A -->
+    <div class="slide">
+        <div class="content-area" style="text-align: center;">
+            <h2 style="font-size: 130px; color: var(--accent-gold); margin-bottom: 25px;">Q & A</h2>
+            <p style="font-size: 40px; margin-bottom: 60px;">"Ready to Fly with Digital Excellence"</p>
+            <div style="height: 8px; width: 160px; background: var(--accent-gold); margin: 0 auto 50px;"></div>
+            <div style="font-size: 30px; color: #b0b0b0;">
+                <strong style="color:#fff; font-size: 38px;">Borrirux Polyiam</strong><br>
+                pborrirux@gmail.com
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let current = 0;
+    const slides = document.querySelectorAll('.slide');
+    const prog = document.getElementById('progress-indicator');
+    const vp = document.getElementById('viewport');
+
+    function updateScale() {
+        // เช็คว่าหน้าจอกว้างกว่า 900px (Desktop/Tablet แนวนอน) ถึงจะใช้ Fixed Scale
+        if (window.innerWidth > 900) {
+            vp.style.width = '1280px';
+            vp.style.height = '720px';
+            const factor = Math.min(window.innerWidth / 1280, window.innerHeight / 720) * 0.96;
+            vp.style.transform = `scale(${factor})`;
+        } else {
+            // โหมดมือถือ ให้ความกว้าง-ยาวเต็มจอ แล้วใช้ CSS @media จัดการต่อ
+            vp.style.width = '100%';
+            vp.style.height = '100%';
+            vp.style.transform = 'none';
+        }
+    }
+
+    function showSlide(n) {
+        slides.forEach(s => s.classList.remove('active'));
+        slides[n].classList.add('active');
+        current = n;
+        prog.style.width = ((n + 1) / slides.length) * 100 + '%';
+    }
+
+    function next() { if(current < slides.length - 1) showSlide(current + 1); }
+    function prev() { if(current > 0) showSlide(current - 1); }
+
+    function toggleFS() {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else if (document.exitFullscreen) document.exitFullscreen();
+    }
+
+    // Modal Details - ALL LINKS & KEYS TESTED
+    const details = {
+        sdwan: {
+            title: "SD-WAN Strategy (Direct Image Link)",
+            img: "img/sd-wan.jpeg",
+            desc: "<strong>ทำไมต้องมีใน สบพ.?</strong><ul><li>เชื่อมโยงวิทยาเขตให้ได้รับทรัพยากรเท่าเทียมกัน (Digital Equity)</li><li>บริหารจัดการ Link จากส่วนกลางได้ทันที ลดค่าใช้จ่าย 30%</li><li>มีระบบ Fail-over อัตโนมัติ ป้องกันเน็ตล่มในวันสำคัญ</li></ul>"
+        },
+        noc: {
+            title: "Security & NOC (24/7 Monitoring)",
+            img: "img/noc.jpeg",
+            desc: "<strong>เฝ้าระวังเชิงรุก (Proactive Support)</strong><br><br>เราจะจัดตั้งศูนย์ Monitoring เพื่อดูสถานะระบบดิจิทัลทั้งหมดของ สบพ. แบบ Real-time ทีม IT จะทราบปัญหาก่อนที่ผู้ใช้งานจะร้องเรียน พร้อมระบบ Enterprise Firewall ป้องกันการเจาะระบบจากภายนอก 100%"
+        },
+        hybridcloud: {
+            title: "Hybrid Cloud Infrastructure",
+            img: "img/Cloud.jpeg",
+            desc: "<strong>สถาปัตยกรรมแบบผสมผสาน</strong><ul><li><strong>Private Cloud:</strong> เก็บข้อมูลงานวิจัยและคะแนนนักศึกษา</li><li><strong>Public Cloud:</strong> รองรับระบบ LMS และ Web Portal</li><li><strong>VMware SDDC:</strong> ช่วยให้การย้ายระบบทำได้ทันทีโดยไม่ต้องปิดบริการ</li></ul>"
+        },
+        sso: {
+            title: "Unified Single Sign-On (SSO)",
+            img: "img/SSO.jpeg",
+            desc: "<strong>หนึ่งบัญชี เข้าถึงทุกบริการ</strong><br><br>นักศึกษาและบุคลากรใช้ Username ชุดเดียวในการเข้าถึงทั้ง LMS, ระบบลงทะเบียน และ Wi-Fi ช่วยลดภาระงาน IT ในการรีเซ็ตรหัสผ่าน และเพิ่มความปลอดภัยด้วย Multi-Factor Authentication (MFA)"
+        },
+        fod: {
+            title: "AI FOD Detection (Super AI Results)",
+            img: "img/FOD.jpeg",
+            desc: "<strong>การตรวจจับวัตถุแปลกปลอมด้วย AI</strong><br><br>ประมวลผลจากกล้อง CCTV เพื่อตรวจจับเศษวัสดุหรือนกบนทางวิ่ง (Runway) แบบ Real-time ช่วยเพิ่มความปลอดภัย (Aviation Safety) และเป็นผลงานนวัตกรรมที่โชว์ศักยภาพระดับสากลของ สบพ."
+        },
+        rpa_detail: {
+            title: "RPA: Digital Workforce",
+            img: "img/RPA.jpeg", 
+            desc: "<strong>เปลี่ยนงาน Manual เป็นงานอัตโนมัติ</strong><br><br>เราใช้ Software Robot ในการทำงานที่ซ้ำซ้อน เช่น การรวบรวมข้อมูลลงทะเบียน, การกระทบยอดบัญชี และการออกรายงาน HR<br><strong>ผลลัพธ์:</strong> ลดเวลาจากหลายวันเหลือเพียงไม่กี่นาที และลด Human Error เป็น 0"
+        },
+        backup: {
+            title: "Immutable Backup (Anti-Ransomware)",
+            img: "img/Backup.jpeg",
+            desc: "<strong>ข้อมูลคือหัวใจ เราต้องปกป้อง</strong><br><br>ใช้เทคโนโลยีสำรองข้อมูลที่ 'ลบไม่ได้และแก้ไขไม่ได้' (Write Once, Read Many) แม้ถูก Hacker โจมตีเข้ารหัสข้อมูลหลัก เราก็สามารถกู้คืนระบบกลับมาได้ภายในไม่กี่ชั่วโมงโดยไม่ต้องจ่ายค่าไถ่"
+        },
+        zerotrust: {
+            title: "Zero Trust Architecture",
+            img: "img/Zerotrust.jpeg", 
+            desc: "<strong>Never Trust, Always Verify</strong><br><br>แนวคิดความปลอดภัยสมัยใหม่ที่ไม่เชื่อใจใครแม้อยู่ในเครือข่ายเดียวกัน ทุกการเข้าถึงทรัพยากรของ สบพ. ต้องผ่านการยืนยันตัวตนเสมอ ป้องกันความเสียหายหากมีอุปกรณ์ใดถูกแฮก"
+        }
+    };
+
+    function openDetail(key) {
+        const data = details[key];
+        if(!data) return;
+        document.getElementById('modal-title').innerText = data.title;
+        document.getElementById('modal-img').src = data.img;
+        document.getElementById('modal-desc').innerHTML = data.desc;
+        document.getElementById('modal-detail').classList.add('active');
+    }
+
+    function closeDetail() {
+        document.getElementById('modal-detail').classList.remove('active');
+        document.getElementById('modal-img').src = ""; // Clear source
+    }
+
+    window.addEventListener('resize', updateScale);
+    window.addEventListener('orientationchange', () => { setTimeout(updateScale, 100); });
+    window.addEventListener('load', () => { updateScale(); showSlide(0); });
+    
+    document.addEventListener('keydown', (e) => {
+        if(e.key === 'ArrowRight' || e.key === ' ') next();
+        if(e.key === 'ArrowLeft') prev();
+        if(e.key === 'Escape') closeDetail();
+    });
+</script>
+
+</body>
+</html>
